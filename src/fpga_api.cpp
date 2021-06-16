@@ -203,7 +203,6 @@ void FPGA::convLowering(const std::vector<std::vector<std::vector<std::vector<fl
    * new_inputs: [?, ?]
    *
    */
-
   int conv_channel = cnn_weights.size();
   int input_channel = cnn_weights[0].size();
   int conv_height = cnn_weights[0][0].size();
@@ -219,33 +218,30 @@ void FPGA::convLowering(const std::vector<std::vector<std::vector<std::vector<fl
 
   // new_weight
   for(int i=0; i<conv_channel;i++){
-    new_weights.push_back(std::vector<float>());
-    std::vector<float>& conv_row = new_weights.back();
+    //new_weights.push_back(std::vector<float>(input_channel*conv_height*conv_width));
     for(int j=0; j<input_channel;j++){
       for(int h=0; h<conv_height;h++){
         for(int w=0; w<conv_width;w++){
-          conv_row.push_back(cnn_weights[i][j][h][w]);
+          new_weights[i][j*conv_height*conv_width+h*conv_width+w]=(cnn_weights[i][j][h][w]);
         }
       }
     }
   }
   // new_inputs
-  int new_height = input_channel * input_height;
-  int new_width = input_width;
-  for(int i=0; i<new_height;i++)
-    new_inputs.push_back(std::vector<float>());
   int output_height = input_height-conv_height+1;
   int output_width = input_width-conv_width+1;
   int num_tile = output_height*output_width;
   int conv_area = conv_height*conv_width;
+  int num_input = conv_area*input_channel;
+  //for(int j=0; j<num_input; j++)
+  //  new_inputs.push_back(std::vector<float>(num_tile));
   for(int j=0; j<num_tile;j++){
     for(int c=0;c<input_channel;c++){
       for(int h=0;h<conv_height;h++){
         for(int w=0;w<conv_width;w++){
-          new_inputs[j].push_back(inputs[c][h+j/output_width][w+j%output_width]);
+          new_inputs[c*conv_area+h*conv_width+w][j] = (inputs[c][h+j/output_width][w+j%output_width]);
         }
       }
     }
   }
-  
 }
