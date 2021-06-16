@@ -117,6 +117,9 @@ void FPGA::largeMV(const float* large_mat, const float* input, float* output, in
       int block_row = min(m_size_, num_output-i);
       int block_col = min(v_size_, num_input-j);
 
+      for(int n=0;n<data_size_;n++)
+        data_[n] = 0;
+
       // 1) Assign a vector
       // IMPLEMENT THIS
       memcpy(this->vector(),&input[j],block_col*sizeof(float));
@@ -161,30 +164,28 @@ void FPGA::largeMM(const float* weight_mat, const float* input_mat, float* outpu
 
         // 1) Assign a m1
         // IMPLEMENT THIS
-        // m1 = M1[i*v_size_:(i+1)*v_size_][j*v_size_:(j+1)*v_size_] // A
+        // m1 = M1[i*v_size_:(i+1)*v_size_][j*v_size_:(j+1)*v_size_]
         for(int m=0;m<block_row;m++)
           memcpy(&m1[m*v_size_],&weight_mat[(i+m)*num_input+j],block_col_1*sizeof(float));
 
         // 2) Assign a m2
         // IMPLEMENT THIS
-        // m2 = M2[j*v_size_:(j+1)*v_size_][k*v_size_:(k+1)*v_size_] // B^T
-        for(int m=0;m<block_col_1;m++){
-          for(int n=0;n<block_col_2;n++){
-            m2[m*v_size_+n] = input_mat[(j+n)*num_matrix2+k+m];
-          }
-        }
+        // m2 = M2[j*v_size_:(j+1)*v_size_][k*v_size_:(k+1)*v_size_]
+        for(int m=0;m<block_col_1;m++)
+          memcpy(&m2[m*v_size_],&input_mat[(j+m)*num_matrix2+k],block_col_2*sizeof(float));
 
         // 3) Call a function `blockMM() to execute Matrix matrix multiplication
-        const float* ret = this->blockMM(); // R = A B^T
+        const float* ret = this->blockMM();
 
         // 4) Accumulate intermediate results
+        // IMPLEMENT THIS
         for(int n = 0; n<block_row; ++n)
         {
           for(int m = 0; m<block_col_2; ++m)
           {
             output[(i + n) + (k + m)*num_output] += ret[n*v_size_ + m];
           }
-        }
+        }        
       }
     } 
   }
@@ -219,33 +220,30 @@ void FPGA::convLowering(const std::vector<std::vector<std::vector<std::vector<fl
 
   // new_weight
   for(int i=0; i<conv_channel;i++){
-    new_weights.push_back(std::vector<float>());
-    std::vector<float>& conv_row = new_weights.back();
+    //new_weights.push_back(std::vector<float>(input_channel*conv_height*conv_width));
     for(int j=0; j<input_channel;j++){
       for(int h=0; h<conv_height;h++){
         for(int w=0; w<conv_width;w++){
-          conv_row.push_back(cnn_weights[i][j][h][w]);
+          new_weights[i][j*conv_height*conv_width+h*conv_width+w]=(cnn_weights[i][j][h][w]);
         }
       }
     }
   }
   // new_inputs
-  int new_height = input_channel * input_height;
-  int new_width = input_width;
-  for(int i=0; i<new_height;i++)
-    new_inputs.push_back(std::vector<float>());
   int output_height = input_height-conv_height+1;
   int output_width = input_width-conv_width+1;
   int num_tile = output_height*output_width;
   int conv_area = conv_height*conv_width;
+  int num_input = conv_area*input_channel;
+  //for(int j=0; j<num_input; j++)
+  //  new_inputs.push_back(std::vector<float>(num_tile));
   for(int j=0; j<num_tile;j++){
     for(int c=0;c<input_channel;c++){
       for(int h=0;h<conv_height;h++){
         for(int w=0;w<conv_width;w++){
-          new_inputs[j].push_back(inputs[c][h+j/output_width][w+j%output_width]);
+          new_inputs[c*conv_area+h*conv_width+w][j] = (inputs[c][h+j/output_width][w+j%output_width]);
         }
       }
     }
-  }
-  
+  }  
 }
