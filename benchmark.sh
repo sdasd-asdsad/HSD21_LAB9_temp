@@ -29,4 +29,5 @@ echo -e 'LAB9 test conv'
 
 # Conv Lowering(FPGA) - Acc: 1.0
  python eval.py --num_test_images 100 --m_size 8 --v_size 8 --network cnn --run_type cpu
+ python eval.py --num_test_images 100 --m_size 8 --v_size 8 --network cnn --run_type fpga
  echo -e '\n=> Accuracy should be 1.0'

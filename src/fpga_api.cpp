@@ -4,8 +4,11 @@
 #include<unistd.h>
 #include<sys/mman.h>
 #include<cstring>
+#include <time.h>
 
 #define min(x,y) (((x)<(y))?(x):(y))
+
+double time_accum=0.0;
 
 FPGA::FPGA(off_t data_addr, off_t output_addr, int m_size, int v_size)
 {
@@ -35,6 +38,7 @@ FPGA::~FPGA()
   close(fd_);
 
   delete[] data_;
+  printf("total hardware time cost: %f\n",time_accum/CLOCKS_PER_SEC);
 }
 
 float* FPGA::matrix(void)
@@ -94,8 +98,11 @@ const float* __attribute__((optimize("O0"))) FPGA::blockMM()
   num_block_call_ += 1;
 
   // fpga version
+  clock_t start = clock();
   *output_ = 0x5555;
   while(*output_ == 0x5555);
+  clock_t end = clock();
+  time_accum += (double)(end-start);
 
   return data_M;    
 }
@@ -170,13 +177,11 @@ void FPGA::largeMM(const float* weight_mat, const float* input_mat, float* outpu
         // m2 = M2[j*v_size_:(j+1)*v_size_][k*v_size_:(k+1)*v_size_] // B^T
         for(int m=0;m<block_col_1;m++){
           for(int n=0;n<block_col_2;n++){
-            m2[m*v_size_+n] = input_mat[(j+n)*num_matrix2+k+m];
+            m2[n*v_size_+m] = input_mat[(j+m)*num_matrix2+k+n];
           }
         }
-
         // 3) Call a function `blockMM() to execute Matrix matrix multiplication
         const float* ret = this->blockMM(); // R = A B^T
-
         // 4) Accumulate intermediate results
         for(int n = 0; n<block_row; ++n)
         {

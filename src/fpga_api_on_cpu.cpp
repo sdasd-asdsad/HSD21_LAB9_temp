@@ -2,10 +2,13 @@
 #include<stdio.h>
 #include<iostream>
 #include<cstring>
+#include <time.h>
 
 using namespace std;
 
 #define min(x,y) (((x)<(y))?(x):(y))
+
+double time_accum = 0.0;
 
 FPGA::FPGA(off_t data_addr, off_t output_addr, int m_size, int v_size)
 {
@@ -32,6 +35,8 @@ FPGA::~FPGA()
   delete[] output_M;
   // delete[] data_;
   delete[] data_M;
+
+  printf("total hardware time cost : %f\n", time_accum/CLOCKS_PER_SEC);
 }
 
 float* FPGA::matrix(void)
@@ -69,6 +74,7 @@ const float* FPGA::blockMM()
   num_block_call_ += 1;
 
   // cpu version
+  clock_t start = clock();
   float* m1 = this->matrix_M1();
   float* m2 = this->matrix_M2();
   float* out  = reinterpret_cast<float*>(output_M);  
@@ -85,6 +91,9 @@ const float* FPGA::blockMM()
 
   for(int i = 0; i < m1_size_; ++i)
     data_M[i] = out[i];
+
+  clock_t end = clock();
+  time_accum += (double)(end-start);
 
   return data_M;    
 }
